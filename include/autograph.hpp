@@ -39,10 +39,10 @@ struct Node {
 };
 
 struct Edge {
-  Node *from;
-  Node *to;
+  int from;
+  int to;
   int weight;
-  Edge(Node *f, Node *t) {
+  Edge(int f, int t) {
     from = f; to = t;
   }
 };
@@ -121,7 +121,7 @@ Bipartate::Bipartate(std::string csv_name) {
         t2[n_col].connections.push_back(n_row);
 
         // Add edge from t1 to t2
-        edges.push_back(Edge(&t1[n_row], &t2[n_col]));
+        edges.push_back(Edge(n_row, n_col));
       }
     }
   }
