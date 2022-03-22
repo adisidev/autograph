@@ -13,9 +13,11 @@
 #include <cstdlib>
 #include <boost/container_hash/hash.hpp>
 
+#define t2_more_than_t1 1000
+
 struct Pos {
-  double x;
-  double y;
+  int x;
+  int y;
 
   Pos() {
     x = 0; y = 0;
@@ -28,13 +30,30 @@ struct Pos {
 struct Node {
   int id;
   Pos pos;
-  std::string label;
+  // std::string label;
   std::unordered_set<int> connections;
+  bool is_t1;
 
-  Node() {};
-  // Node(int nid) {
-  //   id = nid;
-  // }
+  Node() {
+    is_t1 = true;
+  };
+
+  std::string as_dot() {
+    std::string dot = "  ";
+    if (is_t1) {
+      dot += std::to_string(id) + "[color = blue, ";
+    } else {
+      dot += std::to_string(id + t2_more_than_t1) + "[color = red, ";
+    }
+    // dot += "label = " + label + ", "
+    dot += "pos = " +
+      std::to_string(pos.x) +
+      "," +
+      std::to_string(pos.y) +
+      "!];\n";
+    return dot;
+  }
+
 };
 
 struct Edge {
@@ -43,6 +62,13 @@ struct Edge {
   int weight;
   Edge(int f, int t) {
     from = f; to = t;
+  }
+
+  std::string as_dot() {
+    std::string dot = "  ";
+    dot += std::to_string(from) + " -- " + std::to_string(to + t2_more_than_t1);
+    dot += "[label = \"" + std::to_string(weight) + "\"];\n";
+    return dot;
   }
 };
 
@@ -54,29 +80,7 @@ struct Bipartate {
   std::unordered_map<std::pair<int, int>, int,
     boost::hash<std::pair<int, int>>> positions;
   Bipartate(std::string csv_name);
-  void print_dot();
-
-};
-
-struct Generation {
-
-  // What generation we are on
-  int gen_count;
-
-  // All Graphs of this generation
-  std::vector<Bipartate> gen;
-
-  // Scores of in this generation
-  unsigned int worst_score;
-  // double percentile_25; // 25th percentile
-  unsigned int median_score; // 50th percentile
-  // double percentile_75; // 75th percentile
-  unsigned int best_score;
-
-  // Name of CSV that this was initially created from
-  std::string csv_name;
-
-  Generation(int argc, char **argv);
+  void print_dot(std::string file_name);
 
 };
 
@@ -143,13 +147,54 @@ Bipartate::Bipartate(std::string csv_name) {
   for (auto& it: t2) {
     positions[std::make_pair(x, y)] = it.first;
     it.second.pos = Pos(x, y);
+    it.second.is_t1 = false;
     y++;
   }
 }
 
-// void Bipartate::print_dot() {
+void Bipartate::print_dot(std::string file_name) {
+  std::ofstream f;
+  f.open(file_name);
+  f << "graph autograph {\n";
+  f << "// Nodes\n";
 
-// }
+  for (auto& it: t1) {
+    f << it.second.as_dot();
+  }
+  for (auto& it: t2) {
+    f << it.second.as_dot();
+  }
+
+  f << "// Edges\n";
+  for (Edge e : edges) {
+    f << e.as_dot();
+  }
+  f << "}";
+  f.close();
+  return;
+}
+
+struct Generation {
+
+  // What generation we are on
+  int gen_count;
+
+  // All Graphs of this generation
+  std::vector<Bipartate> gen;
+
+  // Scores of in this generation
+  unsigned int worst_score;
+  // double percentile_25; // 25th percentile
+  unsigned int median_score; // 50th percentile
+  // double percentile_75; // 75th percentile
+  unsigned int best_score;
+
+  // Name of CSV that this was initially created from
+  std::string csv_name;
+
+  Generation(int argc, char **argv);
+
+};
 
 Generation::Generation(int argc, char **argv) {
 

@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
   GVC_t *gvc = gvContext();
 
   // parse command line args - minimally argv[0] sets layout engine
-  gvParseArgs(gvc, argc, argv);
+  // gvParseArgs(gvc, argc, argv);
 
   // Create a simple digraph
   Agraph_t *g = agopen("g", Agdirected, 0);
@@ -23,10 +23,10 @@ int main(int argc, char **argv) {
   agsafeset(n, "color", "red", "");
 
   // Compute a layout using layout engine from command line args
-  gvLayoutJobs(gvc, g);
+  // gvLayoutJobs(gvc, g);
 
   // Write the graph according to -T and -o options
-  gvRenderJobs(gvc, g);
+  // gvRenderJobs(gvc, g);
 
   // Free layout data
   gvFreeLayout(gvc, g);
