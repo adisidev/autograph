@@ -1,0 +1,8 @@
+/Users/adi/Desktop/github/autograph/build/CMakeFiles/autograph.dir
+/Users/adi/Desktop/github/autograph/build/CMakeFiles/uninstall.dir
+/Users/adi/Desktop/github/autograph/build/CMakeFiles/edit_cache.dir
+/Users/adi/Desktop/github/autograph/build/CMakeFiles/rebuild_cache.dir
+/Users/adi/Desktop/github/autograph/build/CMakeFiles/list_install_components.dir
+/Users/adi/Desktop/github/autograph/build/CMakeFiles/install.dir
+/Users/adi/Desktop/github/autograph/build/CMakeFiles/install/local.dir
+/Users/adi/Desktop/github/autograph/build/CMakeFiles/install/strip.dir
