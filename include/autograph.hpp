@@ -41,16 +41,16 @@ struct Node {
   std::string as_dot() {
     std::string dot = "  ";
     if (is_t1) {
-      dot += std::to_string(id) + "[color = blue, ";
+      dot += std::to_string(id) + " [color = blue, ";
     } else {
-      dot += std::to_string(id + t2_more_than_t1) + "[color = red, ";
+      dot += std::to_string(id + t2_more_than_t1) + " [color = red, ";
     }
     // dot += "label = " + label + ", "
-    dot += "pos = " +
+    dot += "pos = \"" +
       std::to_string(pos.x) +
       "," +
       std::to_string(pos.y) +
-      "!];\n";
+      "!\"];\n";
     return dot;
   }
 
@@ -60,8 +60,8 @@ struct Edge {
   int from;
   int to;
   int weight;
-  Edge(int f, int t) {
-    from = f; to = t;
+  Edge(int f, int t, int w) {
+    from = f; to = t; weight = w;
   }
 
   std::string as_dot() {
@@ -102,7 +102,7 @@ Bipartate::Bipartate(std::string csv_name) {
     std::stringstream s(row);
 
     // Initialise t1 at n_row
-    t1[n_row];
+    t1[n_row].id = n_row;
 
     // Column index
     unsigned int n_col = 0;
@@ -112,7 +112,7 @@ Bipartate::Bipartate(std::string csv_name) {
       unsigned int weight = std::stoi(val);
 
       // Initialise t2 at n_col
-      t2[n_col];
+      t2[n_col].id = n_col;
 
       // If linked
       if (weight) {
@@ -124,9 +124,11 @@ Bipartate::Bipartate(std::string csv_name) {
         t2[n_col].connections.insert(n_row);
 
         // Add edge from t1 to t2
-        edges.push_back(Edge(n_row, n_col));
+        edges.push_back(Edge(n_row, n_col, weight));
       }
+      n_col++;
     }
+    n_row++;
   }
 
   // First tower
@@ -156,8 +158,10 @@ void Bipartate::print_dot(std::string file_name) {
   std::ofstream f;
   f.open(file_name);
   f << "graph autograph {\n";
-  f << "// Nodes\n";
 
+  // Nodes
+  f << "\n";
+  f << "  // Nodes\n";
   for (auto& it: t1) {
     f << it.second.as_dot();
   }
@@ -165,11 +169,14 @@ void Bipartate::print_dot(std::string file_name) {
     f << it.second.as_dot();
   }
 
-  f << "// Edges\n";
+  // Edges
+  f << "\n";
+  f << "  // Edges\n";
   for (Edge e : edges) {
     f << e.as_dot();
   }
-  f << "}";
+
+  f << "\n}\n";
   f.close();
   return;
 }
@@ -180,7 +187,7 @@ struct Generation {
   int gen_count;
 
   // All Graphs of this generation
-  std::vector<Bipartate> gen;
+  std::vector<Bipartate> specimen;
 
   // Scores of in this generation
   unsigned int worst_score;
@@ -231,4 +238,5 @@ Generation::Generation(int argc, char **argv) {
   }
 
   Bipartate b1(csv_name);
+  specimen.push_back(b1);
 }
