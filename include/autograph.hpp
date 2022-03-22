@@ -1,7 +1,6 @@
 #pragma once
 
 #include "argparse.hpp"
-// #include "csv.hpp"
 
 #include <vector>
 #include <string>
@@ -13,8 +12,6 @@
 #include <algorithm>
 #include <cstdlib>
 #include <boost/container_hash/hash.hpp>
-
-// namespace autograph {
 
 struct Pos {
   double x;
