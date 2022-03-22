@@ -21,6 +21,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/opt/homebrew/Cellar/cmake/3.22.3/share/cmake/Modules/Compiler/CMakeCommonCompilerMacros.cmake"
   "/opt/homebrew/Cellar/cmake/3.22.3/share/cmake/Modules/Compiler/Clang.cmake"
   "/opt/homebrew/Cellar/cmake/3.22.3/share/cmake/Modules/Compiler/GNU.cmake"
+  "/opt/homebrew/Cellar/cmake/3.22.3/share/cmake/Modules/FindBoost.cmake"
   "/opt/homebrew/Cellar/cmake/3.22.3/share/cmake/Modules/FindPackageHandleStandardArgs.cmake"
   "/opt/homebrew/Cellar/cmake/3.22.3/share/cmake/Modules/FindPackageMessage.cmake"
   "/opt/homebrew/Cellar/cmake/3.22.3/share/cmake/Modules/FindPkgConfig.cmake"
@@ -30,6 +31,10 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/opt/homebrew/Cellar/cmake/3.22.3/share/cmake/Modules/Platform/Darwin-Initialize.cmake"
   "/opt/homebrew/Cellar/cmake/3.22.3/share/cmake/Modules/Platform/Darwin.cmake"
   "/opt/homebrew/Cellar/cmake/3.22.3/share/cmake/Modules/Platform/UnixPaths.cmake"
+  "/opt/homebrew/lib/cmake/Boost-1.78.0/BoostConfig.cmake"
+  "/opt/homebrew/lib/cmake/Boost-1.78.0/BoostConfigVersion.cmake"
+  "/opt/homebrew/lib/cmake/boost_headers-1.78.0/boost_headers-config-version.cmake"
+  "/opt/homebrew/lib/cmake/boost_headers-1.78.0/boost_headers-config.cmake"
   )
 
 # The corresponding makefile is:

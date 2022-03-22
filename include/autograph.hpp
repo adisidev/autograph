@@ -6,11 +6,13 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include <algorithm>
 #include <cstdlib>
+#include <boost/container_hash/hash.hpp>
 
 // namespace autograph {
 
@@ -30,7 +32,7 @@ struct Node {
   int id;
   Pos pos;
   std::string label;
-  std::vector<int> connections;
+  std::unordered_set<int> connections;
 
   Node() {};
   // Node(int nid) {
@@ -52,8 +54,8 @@ struct Bipartate {
   std::unordered_map<int, Node> t1;
   std::unordered_map<int, Node> t2;
   std::vector<Edge> edges;
-  std::vector<int> t1_order;
-  std::vector<int> t2_order;
+  std::unordered_map<std::pair<int, int>, int,
+    boost::hash<std::pair<int, int>>> positions;
   Bipartate(std::string csv_name);
   void print_dot();
 
@@ -115,10 +117,10 @@ Bipartate::Bipartate(std::string csv_name) {
       if (weight) {
 
         // Add connection from t1 to t2
-        t1[n_row].connections.push_back(n_col);
+        t1[n_row].connections.insert(n_col);
 
         // Add connection from t2 to t1
-        t2[n_col].connections.push_back(n_row);
+        t2[n_col].connections.insert(n_row);
 
         // Add edge from t1 to t2
         edges.push_back(Edge(n_row, n_col));
@@ -131,7 +133,7 @@ Bipartate::Bipartate(std::string csv_name) {
   unsigned int x = 0;
   unsigned int y = 0;
   for (auto& it: t1) {
-    t1_order.push_back(it.first);
+    positions[std::make_pair(x, y)] = it.first;
     it.second.pos = Pos(x, y);
     y++;
   }
@@ -142,7 +144,7 @@ Bipartate::Bipartate(std::string csv_name) {
 
   // "Random" order based on unordered_map
   for (auto& it: t2) {
-    t2_order.push_back(it.first);
+    positions[std::make_pair(x, y)] = it.first;
     it.second.pos = Pos(x, y);
     y++;
   }

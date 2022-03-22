@@ -10,10 +10,11 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Lots of warnings.
-find_package(PkgConfig REQUIRED)
 add_compile_options(-Wall -Wextra -pedantic)
 
 # Finding appropriate packages.
+find_package(Boost REQUIRED)
+find_package(PkgConfig REQUIRED)
 pkg_search_module(graphviz REQUIRED libgvc IMPORTED_TARGET)
 include_directories(PkgConfig::graphviz)
 link_libraries(PkgConfig::graphviz)
@@ -46,7 +47,7 @@ elseif(UNIX)
   set(CMAKE_C_COMPILER "gcc-11")
 endif()
 
-target_include_directories(autograph PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(autograph PUBLIC ${PROJECT_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
 # Linking appropriate libraries to autograph target.
 target_link_libraries(autograph PUBLIC PkgConfig::graphviz)
 

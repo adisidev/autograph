@@ -4,7 +4,7 @@
 # compile CXX with /opt/homebrew/opt/llvm/bin/clang++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/Users/adi/Desktop/github/autograph/PkgConfig::graphviz -I/Users/adi/Desktop/github/autograph/include -isystem /opt/homebrew/Cellar/graphviz/3.0.0/include/graphviz
+CXX_INCLUDES = -I/Users/adi/Desktop/github/autograph/PkgConfig::graphviz -I/Users/adi/Desktop/github/autograph/include -I/opt/homebrew/include -isystem /opt/homebrew/Cellar/graphviz/3.0.0/include/graphviz
 
 CXX_FLAGSarm64 = -O3 -DNDEBUG -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -Wall -Wextra -pedantic -std=gnu++2a
 
