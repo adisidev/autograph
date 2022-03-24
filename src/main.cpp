@@ -5,11 +5,6 @@ int main(int argc, char **argv) {
 
   // Create first generation based on options
   Generation G(argc, argv);
-
-  G.evolve(10, 127);
-
-  G.write_dot();
-
-  // Print bipartate graph
-  // G.specimen[0].write_dot("output.dot");
+  G.advance_n_gens(1000, 1000, 120);
+  G.write_dot(false);
 }

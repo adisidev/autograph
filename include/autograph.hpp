@@ -27,13 +27,27 @@ struct Pos {
   Pos() {
     x = 0; y = 0;
   }
-  Pos(double x1, double y1) {
+  Pos(int x1, int y1) {
     x = x1; y = y1;
   }
 };
 
+struct Segment {
+  Pos a; Pos b;
+  Segment(Pos a1, Pos b1) {
+    a = a1; b = b1;
+  }
+  bool intersects(Segment &s2);
+};
+
+bool Segment::intersects(Segment &s2) {
+  return ((a.y < s2.a.y && b.y > s2.b.y) ||
+          (a.y > s2.a.y && b.y < s2.b.y) ||
+          (a.y == s2.a.y && b.y == s2.b.y));
+}
+
 struct Node {
-  int id;
+  unsigned int id;
   Pos pos;
   // std::string label;
   std::unordered_set<int> connections;
@@ -62,8 +76,8 @@ struct Node {
 };
 
 struct Edge {
-  int from;
-  int to;
+  unsigned int from;
+  unsigned int to;
   int weight;
   Edge(int f, int t, int w) {
     from = f; to = t; weight = w;
@@ -79,6 +93,7 @@ struct Edge {
 
 struct Bipartate {
 
+  unsigned int score;
   std::unordered_map<int, Node> t1;
   std::unordered_map<int, Node> t2;
   std::vector<Edge> edges;
@@ -88,7 +103,12 @@ struct Bipartate {
   Bipartate() {};
   void write_dot(std::string file_name);
   void mutate(uint8_t chance);
+  void calc_score();
 
+  // Overloading "<" operator based on score
+  bool operator < (const Bipartate &rhs) const {
+    return score < rhs.score;
+  }
 };
 
 Bipartate::Bipartate(std::string csv_name) {
@@ -98,7 +118,7 @@ Bipartate::Bipartate(std::string csv_name) {
   f.open(csv_name);
 
   // Number of lines read
-  int n_row = 0;
+  unsigned int n_row = 0;
 
   // Buffer to hold one row, one value
   std::string row, val;
@@ -112,7 +132,7 @@ Bipartate::Bipartate(std::string csv_name) {
     t1[n_row].id = n_row;
 
     // Column index
-    int n_col = 0;
+    unsigned int n_col = 0;
 
     // Read one , delimitted value at a time
     while (getline (s, val, ',')) {
@@ -166,7 +186,7 @@ void Bipartate::mutate(uint8_t chance) {
   for (auto& it: t1) {
 
     // Should this node mutate?
-    if (Random::get<uint8_t>()> chance) {
+    if (Random::get<uint8_t>() > chance) {
 
       // Should it swap with a neighbour?
       if (Random::get<bool>()) {
@@ -203,12 +223,16 @@ void Bipartate::mutate(uint8_t chance) {
 
         int x = it.second.pos.x; int y = it.second.pos.y;
 
+        // Swap with neighbour above
         if (positions.contains({x, y + 1})) {
           it.second.pos.y = y + 1;
           t2[positions[{x, y + 1}]].pos.y = y;
           positions[{x, y}] = t2[positions[{x, y + 1}]].id;
           positions[{x, y + 1}] = it.second.id;
-        } else if (positions.contains({x, y - 1})) {
+        }
+
+        // Swap with neighbour below
+        else if (positions.contains({x, y - 1})) {
           it.second.pos.y = y - 1;
           t2[positions[{x, y - 1}]].pos.y = y;
           positions[{x, y}] = t2[positions[{x, y - 1}]].id;
@@ -227,7 +251,7 @@ void Bipartate::write_dot(std::string file_name) {
   f << "graph autograph {\n";
 
   // Nodes
-  f << "\n";
+  f << std::endl;
   f << "  // Nodes\n";
   for (auto& it: t1) {
     f << it.second.as_dot();
@@ -237,7 +261,7 @@ void Bipartate::write_dot(std::string file_name) {
   }
 
   // Edges
-  f << "\n";
+  f << std::endl;
   f << "  // Edges\n";
   for (Edge e : edges) {
     f << e.as_dot();
@@ -248,10 +272,25 @@ void Bipartate::write_dot(std::string file_name) {
   return;
 }
 
+// Calculate score to optimise
+void Bipartate::calc_score() {
+
+  score = 0;
+
+  for (unsigned int i = 0; i < edges.size(); ++i) {
+    Segment s1(t1[edges[i].from].pos, t2[edges[i].to].pos);
+    for (unsigned int j = i; i < edges.size(); ++i) {
+      Segment s2(t1[edges[j].from].pos, t2[edges[j].to].pos);
+      score += s1.intersects(s2);
+    }
+  }
+
+}
+
 struct Generation {
 
   // What generation we are on
-  int gen_count;
+  int n_generation;
 
   // All Graphs of this generation
   std::vector<Bipartate> specimen;
@@ -270,11 +309,34 @@ struct Generation {
   Generation(int argc, char **argv);
   void kill();
   void evolve(unsigned int n_specimen, uint8_t chance);
-  void write_dot();
-
+  void write_dot(bool all);
+  void advance(unsigned int n_specimen, uint8_t chance);
+  void advance_n_gens(unsigned int n_gens,
+                      unsigned int n_specimen,
+                      uint8_t chance);
 };
 
+void Generation::advance(unsigned int n_specimen, uint8_t chance) {
+
+  std::cout << "Going from Generation " << n_generation;
+  std::cout << " to Generation " << ++n_generation << std::endl;
+  kill();
+  evolve(n_specimen, chance);
+  std::cout << "Best score for Generation " << n_generation << ": ";
+  std::cout << best_specimen.score << std::endl;
+}
+
+void Generation::advance_n_gens(unsigned int n_gens,
+                                unsigned int n_specimen,
+                                uint8_t chance) {
+  for (unsigned int i = 0; i < n_gens; i ++) {
+    advance(n_specimen, chance);
+  }
+}
+
 Generation::Generation(int argc, char **argv) {
+
+  n_generation = 0;
 
   // Create parser for arguments using argparse.
   // From https://github.com/p-ranav/argparse
@@ -309,8 +371,10 @@ Generation::Generation(int argc, char **argv) {
   }
 
   Bipartate b1(csv_name);
+  b1.calc_score();
   best_specimen = b1;
-  // specimen.push_back(b1);
+  std::cout << "Score for Generation 0: " << b1.score << std::endl;
+  std::cout << std::endl;
 }
 
 void Generation::kill() {
@@ -318,17 +382,24 @@ void Generation::kill() {
 }
 
 void Generation::evolve(unsigned int n_specimen, uint8_t chance) {
+  std::cout << "Evolving ...\n";
   for (unsigned int i = 0; i < n_specimen; ++i) {
-    Bipartate b1(best_specimen); b1.mutate(chance);
+    Bipartate b1(best_specimen); b1.mutate(chance); b1.calc_score();
     specimen.push_back(b1);
+  }
+  std::sort(specimen.begin(), specimen.end());
+  if (best_specimen < specimen.back()) {
+    best_specimen = specimen.back();
   }
 }
 
-void Generation::write_dot() {
+void Generation::write_dot(bool all) {
   best_specimen.write_dot("best.dot");
 
-  for (unsigned int i = 0; i < specimen.size(); ++i) {
-    specimen[i].write_dot("specimen_" + std::to_string(i) + ".dot");
+  if (all) {
+    for (unsigned int i = 0; i < specimen.size(); ++i) {
+      specimen[i].write_dot("specimen_" + std::to_string(i) + ".dot");
+    }
   }
 
 }
