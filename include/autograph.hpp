@@ -1,6 +1,7 @@
 #pragma once
 
 #include "argparse.hpp"
+#include "random.hpp"
 
 #include <vector>
 #include <string>
@@ -13,7 +14,11 @@
 #include <cstdlib>
 #include <boost/container_hash/hash.hpp>
 
-#define t2_more_than_t1 1000
+#define t1_prefix "O_"
+#define t2_prefix "R_"
+
+// get base random alias which is auto seeded and has static API and internal state
+using Random = effolkronium::random_static;
 
 struct Pos {
   int x;
@@ -41,9 +46,9 @@ struct Node {
   std::string as_dot() {
     std::string dot = "  ";
     if (is_t1) {
-      dot += std::to_string(id) + " [color = blue, ";
+      dot += t1_prefix + std::to_string(id) + " [color = blue, ";
     } else {
-      dot += std::to_string(id + t2_more_than_t1) + " [color = red, ";
+      dot += t2_prefix + std::to_string(id) + " [color = red, ";
     }
     // dot += "label = " + label + ", "
     dot += "pos = \"" +
@@ -66,7 +71,7 @@ struct Edge {
 
   std::string as_dot() {
     std::string dot = "  ";
-    dot += std::to_string(from) + " -- " + std::to_string(to + t2_more_than_t1);
+    dot += t1_prefix + std::to_string(from) + " -- " + t2_prefix + std::to_string(to);
     dot += "[label = \"" + std::to_string(weight) + "\"];\n";
     return dot;
   }
@@ -80,7 +85,9 @@ struct Bipartate {
   std::unordered_map<std::pair<int, int>, int,
     boost::hash<std::pair<int, int>>> positions;
   Bipartate(std::string csv_name);
-  void print_dot(std::string file_name);
+  Bipartate() {};
+  void write_dot(std::string file_name);
+  void mutate(uint8_t chance);
 
 };
 
@@ -91,7 +98,7 @@ Bipartate::Bipartate(std::string csv_name) {
   f.open(csv_name);
 
   // Number of lines read
-  unsigned int n_row = 0;
+  int n_row = 0;
 
   // Buffer to hold one row, one value
   std::string row, val;
@@ -105,11 +112,11 @@ Bipartate::Bipartate(std::string csv_name) {
     t1[n_row].id = n_row;
 
     // Column index
-    unsigned int n_col = 0;
+    int n_col = 0;
 
     // Read one , delimitted value at a time
     while (getline (s, val, ',')) {
-      unsigned int weight = std::stoi(val);
+      int weight = std::stoi(val);
 
       // Initialise t2 at n_col
       t2[n_col].id = n_col;
@@ -133,10 +140,10 @@ Bipartate::Bipartate(std::string csv_name) {
 
   // First tower
   // "Random" order based on unordered_map
-  unsigned int x = 0;
-  unsigned int y = 0;
+  int x = 0;
+  int y = 0;
   for (auto& it: t1) {
-    positions[std::make_pair(x, y)] = it.first;
+    positions[{x, y}] = it.first;
     it.second.pos = Pos(x, y);
     y++;
   }
@@ -147,14 +154,74 @@ Bipartate::Bipartate(std::string csv_name) {
 
   // "Random" order based on unordered_map
   for (auto& it: t2) {
-    positions[std::make_pair(x, y)] = it.first;
+    positions[{x, y}] = it.first;
     it.second.pos = Pos(x, y);
     it.second.is_t1 = false;
     y++;
   }
 }
 
-void Bipartate::print_dot(std::string file_name) {
+void Bipartate::mutate(uint8_t chance) {
+
+  for (auto& it: t1) {
+
+    // Should this node mutate?
+    if (Random::get<uint8_t>()> chance) {
+
+      // Should it swap with a neighbour?
+      if (Random::get<bool>()) {
+
+        int x = it.second.pos.x; int y = it.second.pos.y;
+
+        // Swap with neighbour above
+        if (positions.contains({x, y + 1})) {
+          it.second.pos.y = y + 1;
+          t1[positions[{x, y + 1}]].pos.y = y;
+          positions[{x, y}] = t1[positions[{x, y + 1}]].id;
+          positions[{x, y + 1}] = it.second.id;
+        }
+
+        // Swap with neighbour below
+        else if (positions.contains({x, y - 1})) {
+          it.second.pos.y = y - 1;
+          t1[positions[{x, y - 1}]].pos.y = y;
+          positions[{x, y}] = t1[positions[{x, y - 1}]].id;
+          positions[{x, y - 1}] = it.second.id;
+        }
+      }
+      // Else move to new empty cell
+    }
+  }
+
+  for (auto& it: t2) {
+
+    // Should this node mutate?
+    if (Random::get<uint8_t>() > chance) {
+
+      // Should it swap with a neighbour?
+      if (Random::get<bool>()) {
+
+        int x = it.second.pos.x; int y = it.second.pos.y;
+
+        if (positions.contains({x, y + 1})) {
+          it.second.pos.y = y + 1;
+          t2[positions[{x, y + 1}]].pos.y = y;
+          positions[{x, y}] = t2[positions[{x, y + 1}]].id;
+          positions[{x, y + 1}] = it.second.id;
+        } else if (positions.contains({x, y - 1})) {
+          it.second.pos.y = y - 1;
+          t2[positions[{x, y - 1}]].pos.y = y;
+          positions[{x, y}] = t2[positions[{x, y - 1}]].id;
+          positions[{x, y - 1}] = it.second.id;
+        }
+      }
+      // Else move to new empty cell
+    }
+  }
+
+}
+
+void Bipartate::write_dot(std::string file_name) {
   std::ofstream f;
   f.open(file_name);
   f << "graph autograph {\n";
@@ -188,6 +255,7 @@ struct Generation {
 
   // All Graphs of this generation
   std::vector<Bipartate> specimen;
+  Bipartate best_specimen;
 
   // Scores of in this generation
   unsigned int worst_score;
@@ -200,6 +268,9 @@ struct Generation {
   std::string csv_name;
 
   Generation(int argc, char **argv);
+  void kill();
+  void evolve(unsigned int n_specimen, uint8_t chance);
+  void write_dot();
 
 };
 
@@ -238,5 +309,26 @@ Generation::Generation(int argc, char **argv) {
   }
 
   Bipartate b1(csv_name);
-  specimen.push_back(b1);
+  best_specimen = b1;
+  // specimen.push_back(b1);
+}
+
+void Generation::kill() {
+  specimen.clear();
+}
+
+void Generation::evolve(unsigned int n_specimen, uint8_t chance) {
+  for (unsigned int i = 0; i < n_specimen; ++i) {
+    Bipartate b1(best_specimen); b1.mutate(chance);
+    specimen.push_back(b1);
+  }
+}
+
+void Generation::write_dot() {
+  best_specimen.write_dot("best.dot");
+
+  for (unsigned int i = 0; i < specimen.size(); ++i) {
+    specimen[i].write_dot("specimen_" + std::to_string(i) + ".dot");
+  }
+
 }
