@@ -102,7 +102,7 @@ struct Bipartate {
   Bipartate(std::string csv_name);
   Bipartate() {};
   void write_dot(std::string file_name);
-  void mutate(uint8_t chance);
+  Bipartate mutate(uint8_t chance);
   void calc_score();
 
   // Overloading "<" operator based on score
@@ -168,7 +168,7 @@ Bipartate::Bipartate(std::string csv_name) {
     y++;
   }
 
-  // Next to first tower
+  // Second tower, next to first
   x++;
   y = 0;
 
@@ -179,14 +179,18 @@ Bipartate::Bipartate(std::string csv_name) {
     it.second.is_t1 = false;
     y++;
   }
+  write_dot("input.dot");
 }
 
-void Bipartate::mutate(uint8_t chance) {
+Bipartate Bipartate::mutate(uint8_t chance) {
 
-  for (auto& it: t1) {
+  // Make a copy as the result we will return
+  Bipartate bm(*this);
+
+  for (auto& it: bm.t1) {
 
     // Should this node mutate?
-    if (Random::get<uint8_t>() > chance) {
+    if (Random::get<uint8_t>(1, 100) > chance) {
 
       // Should it swap with a neighbour?
       if (Random::get<bool>()) {
@@ -194,29 +198,29 @@ void Bipartate::mutate(uint8_t chance) {
         int x = it.second.pos.x; int y = it.second.pos.y;
 
         // Swap with neighbour above
-        if (positions.contains({x, y + 1})) {
+        if (bm.positions.contains({x, y + 1})) {
           it.second.pos.y = y + 1;
-          t1[positions[{x, y + 1}]].pos.y = y;
-          positions[{x, y}] = t1[positions[{x, y + 1}]].id;
-          positions[{x, y + 1}] = it.second.id;
+          bm.t1[bm.positions[{x, y + 1}]].pos.y = y;
+          bm.positions[{x, y}] = bm.t1[bm.positions[{x, y + 1}]].id;
+          bm.positions[{x, y + 1}] = it.second.id;
         }
 
         // Swap with neighbour below
-        else if (positions.contains({x, y - 1})) {
+        else if (bm.positions.contains({x, y - 1})) {
           it.second.pos.y = y - 1;
-          t1[positions[{x, y - 1}]].pos.y = y;
-          positions[{x, y}] = t1[positions[{x, y - 1}]].id;
-          positions[{x, y - 1}] = it.second.id;
+          bm.t1[bm.positions[{x, y - 1}]].pos.y = y;
+          bm.positions[{x, y}] = bm.t1[bm.positions[{x, y - 1}]].id;
+          bm.positions[{x, y - 1}] = it.second.id;
         }
       }
       // Else move to new empty cell
     }
   }
 
-  for (auto& it: t2) {
+  for (auto& it: bm.t2) {
 
     // Should this node mutate?
-    if (Random::get<uint8_t>() > chance) {
+    if (Random::get<uint8_t>(1, 100) > chance) {
 
       // Should it swap with a neighbour?
       if (Random::get<bool>()) {
@@ -224,25 +228,26 @@ void Bipartate::mutate(uint8_t chance) {
         int x = it.second.pos.x; int y = it.second.pos.y;
 
         // Swap with neighbour above
-        if (positions.contains({x, y + 1})) {
+        if (bm.positions.contains({x, y + 1})) {
           it.second.pos.y = y + 1;
-          t2[positions[{x, y + 1}]].pos.y = y;
-          positions[{x, y}] = t2[positions[{x, y + 1}]].id;
-          positions[{x, y + 1}] = it.second.id;
+          bm.t2[bm.positions[{x, y + 1}]].pos.y = y;
+          bm.positions[{x, y}] = bm.t2[bm.positions[{x, y + 1}]].id;
+          bm.positions[{x, y + 1}] = it.second.id;
         }
 
         // Swap with neighbour below
-        else if (positions.contains({x, y - 1})) {
+        else if (bm.positions.contains({x, y - 1})) {
           it.second.pos.y = y - 1;
-          t2[positions[{x, y - 1}]].pos.y = y;
-          positions[{x, y}] = t2[positions[{x, y - 1}]].id;
-          positions[{x, y - 1}] = it.second.id;
+          bm.t2[bm.positions[{x, y - 1}]].pos.y = y;
+          bm.positions[{x, y}] = bm.t2[bm.positions[{x, y - 1}]].id;
+          bm.positions[{x, y - 1}] = it.second.id;
         }
       }
       // Else move to new empty cell
     }
   }
-
+  bm.calc_score();
+  return bm;
 }
 
 void Bipartate::write_dot(std::string file_name) {
@@ -276,10 +281,9 @@ void Bipartate::write_dot(std::string file_name) {
 void Bipartate::calc_score() {
 
   score = 0;
-
   for (unsigned int i = 0; i < edges.size(); ++i) {
     Segment s1(t1[edges[i].from].pos, t2[edges[i].to].pos);
-    for (unsigned int j = i; i < edges.size(); ++i) {
+    for (unsigned int j = i + 1; j < edges.size(); ++j) {
       Segment s2(t1[edges[j].from].pos, t2[edges[j].to].pos);
       score += s1.intersects(s2);
     }
@@ -292,9 +296,13 @@ struct Generation {
   // What generation we are on
   int n_generation;
 
+  unsigned int default_probability;
+  unsigned int default_n_gens;
+  unsigned int default_n_specimen;
+  unsigned int default_output;
+
   // All Graphs of this generation
   std::vector<Bipartate> specimen;
-  Bipartate best_specimen;
 
   // Scores of in this generation
   unsigned int worst_score;
@@ -307,7 +315,6 @@ struct Generation {
   std::string csv_name;
 
   Generation(int argc, char **argv);
-  void kill();
   void evolve(unsigned int n_specimen, uint8_t chance);
   void write_dot(bool all);
   void advance(unsigned int n_specimen, uint8_t chance);
@@ -318,19 +325,28 @@ struct Generation {
 
 void Generation::advance(unsigned int n_specimen, uint8_t chance) {
 
-  std::cout << "Going from Generation " << n_generation;
-  std::cout << " to Generation " << ++n_generation << std::endl;
-  kill();
+  // std::cout << "Going from Generation " << n_generation;
+  // std::cout << " to Generation " << ++n_generation << std::endl;
   evolve(n_specimen, chance);
-  std::cout << "Best score for Generation " << n_generation << ": ";
-  std::cout << best_specimen.score << std::endl;
 }
 
-void Generation::advance_n_gens(unsigned int n_gens,
-                                unsigned int n_specimen,
-                                uint8_t chance) {
-  for (unsigned int i = 0; i < n_gens; i ++) {
-    advance(n_specimen, chance);
+void Generation::advance_n_gens(unsigned int n_gens = 0,
+                                unsigned int n_specimen = 0,
+                                uint8_t chance = 0) {
+
+  if (!n_gens || !n_specimen || !chance) {
+    n_gens = default_n_gens;
+    n_specimen = default_n_specimen;
+    chance = default_probability;
+  }
+
+  for (unsigned int i = 0; i <= n_gens; i++) {
+    if (!(i % default_output)) {
+      std::cout << "Best score for Generation " << n_generation << ": ";
+      std::cout << specimen[0].score << std::endl;
+      write_dot(false);
+    }
+    evolve(n_specimen, chance);
   }
 }
 
@@ -346,6 +362,30 @@ Generation::Generation(int argc, char **argv) {
   arguments.add_argument("CSV")
     .default_value("none")
     .help("File path: CSV file");
+
+  // Optional argument
+  arguments.add_argument("-s", "--n_specimen")
+    .default_value(static_cast<unsigned int>(1000))
+    .scan<'u', unsigned int>()
+    .help("Integer: Number of specimen per generation");
+
+  // Optional argument
+  arguments.add_argument("-g", "--n_generations")
+    .default_value(static_cast<unsigned int>(1000))
+    .scan<'u', unsigned int>()
+    .help("Integer: Number of generations");
+
+  // Optional argument
+  arguments.add_argument("-p", "--probability")
+    .default_value(static_cast<unsigned int>(50))
+    .scan<'u', unsigned int>()
+    .help("Integer between 0 and 100: Proportion of mutations");
+
+  // Optional argument
+  arguments.add_argument("-o", "--output")
+    .default_value(static_cast<unsigned int>(100))
+    .scan<'u', unsigned int>()
+    .help("Integer: Output best every n generations");
 
   // Parse command line arguments
   try {
@@ -370,36 +410,63 @@ Generation::Generation(int argc, char **argv) {
     _Exit(16);
   }
 
+  std::cout << std::endl;
+  default_n_specimen = arguments.get<unsigned int>("-s");
+  default_probability = arguments.get<unsigned int>("-p");
+  default_n_gens = arguments.get<unsigned int>("-g");
+  default_output = arguments.get<unsigned int>("-o");
+
+  std::cout << "n_specimen: " << default_n_specimen << std::endl;
+  std::cout << "n_generations: " << default_n_gens << std::endl;
+  std::cout << "mutation probability: " << default_probability << std::endl;
+  std::cout << "output every n generations: " << default_output << std::endl;
+  std::cout << std::endl;
+
   Bipartate b1(csv_name);
   b1.calc_score();
-  best_specimen = b1;
+  specimen.push_back(b1);
+  std::cout << "number of nodes: ";
+  std::cout << std::to_string(b1.t1.size() + b1.t2.size()) << std::endl;
+  std::cout << "number of edges: " << std::to_string(b1.edges.size());
+  std::cout << std::endl;
   std::cout << "Score for Generation 0: " << b1.score << std::endl;
   std::cout << std::endl;
 }
 
-void Generation::kill() {
-  specimen.clear();
-}
-
 void Generation::evolve(unsigned int n_specimen, uint8_t chance) {
-  std::cout << "Evolving ...\n";
-  for (unsigned int i = 0; i < n_specimen; ++i) {
-    Bipartate b1(best_specimen); b1.mutate(chance); b1.calc_score();
-    specimen.push_back(b1);
-  }
-  std::sort(specimen.begin(), specimen.end());
-  if (best_specimen < specimen.back()) {
-    best_specimen = specimen.back();
-  }
-}
 
-void Generation::write_dot(bool all) {
-  best_specimen.write_dot("best.dot");
+  // Killing by chance
+  unsigned int n_size = specimen.size();
 
-  if (all) {
-    for (unsigned int i = 0; i < specimen.size(); ++i) {
-      specimen[i].write_dot("specimen_" + std::to_string(i) + ".dot");
+  std::vector<Bipartate> specimen_copy;
+
+  for (unsigned int i = 0; i < n_size; i++) {
+    if (i < Random::get<uint8_t>(1, n_size)) {
+      specimen_copy.push_back(specimen[i]);
     }
   }
 
+  // Replace specimen with copy
+  specimen.clear(); specimen = specimen_copy; specimen_copy.clear();
+
+  unsigned int i = 0;
+  n_size = specimen.size();
+  while (n_size < n_specimen) {
+    specimen.push_back(specimen[i].mutate(chance));
+    i++; n_size++;
+  }
+  std::sort(specimen.begin(), specimen.end());
+  n_generation++;
+}
+
+void Generation::write_dot(bool all) {
+  specimen[0].write_dot("best_gen_" +
+                            std::to_string(n_generation) +
+                            ".dot");
+
+  if (all) {
+    for (unsigned int i = 1; i < specimen.size(); ++i) {
+      specimen[i].write_dot("specimen_" + std::to_string(i) + ".dot");
+    }
+  }
 }
