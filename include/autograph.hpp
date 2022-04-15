@@ -3,21 +3,22 @@
 #include "argparse.hpp"
 #include "random.hpp"
 
-#include <vector>
+#include <algorithm>
+#include <boost/container_hash/hash.hpp>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <sstream>
-#include <fstream>
-#include <iostream>
-#include <algorithm>
-#include <cstdlib>
-#include <boost/container_hash/hash.hpp>
+#include <vector>
 
 #define t1_prefix "O_"
 #define t2_prefix "R_"
 
-// get base random alias which is auto seeded and has static API and internal state
+// get base random alias which is auto seeded and has static API and internal
+// state
 using Random = effolkronium::random_static;
 
 struct Pos {
@@ -25,24 +26,29 @@ struct Pos {
   int y;
 
   Pos() {
-    x = 0; y = 0;
+    x = 0;
+    y = 0;
   }
   Pos(int x1, int y1) {
-    x = x1; y = y1;
+    x = x1;
+    y = y1;
   }
 };
 
 struct Segment {
-  Pos a; Pos b;
+  Pos a;
+  Pos b;
   Segment(Pos a1, Pos b1) {
-    a = a1; b = b1;
+    a = a1;
+    b = b1;
   }
   bool intersects(Segment &s2);
 };
 
 bool Segment::intersects(Segment &s2) {
-  return ((a.y < s2.a.y && b.y > s2.b.y) ||
-          (a.y > s2.a.y && b.y < s2.b.y) ||
+  return ((a.x < s2.a.x && b.x > s2.b.x) || (a.x > s2.a.x && b.x < s2.b.x) ||
+          (a.x == s2.a.x && b.x == s2.b.x)) &&
+         ((a.y < s2.a.y && b.y > s2.b.y) || (a.y > s2.a.y && b.y < s2.b.y) ||
           (a.y == s2.a.y && b.y == s2.b.y));
 }
 
@@ -53,9 +59,7 @@ struct Node {
   std::unordered_set<int> connections;
   bool is_t1;
 
-  Node() {
-    is_t1 = true;
-  };
+  Node() { is_t1 = true; };
 
   std::string as_dot() {
     std::string dot = "  ";
@@ -65,14 +69,10 @@ struct Node {
       dot += t2_prefix + std::to_string(id) + " [color = red, ";
     }
     // dot += "label = " + label + ", "
-    dot += "pos = \"" +
-      std::to_string(pos.x) +
-      "," +
-      std::to_string(pos.y) +
-      "!\"];\n";
+    dot += "pos = \"" + std::to_string(pos.x) + "," + std::to_string(pos.y) +
+           "!\"];\n";
     return dot;
   }
-
 };
 
 struct Edge {
@@ -80,12 +80,15 @@ struct Edge {
   unsigned int to;
   int weight;
   Edge(int f, int t, int w) {
-    from = f; to = t; weight = w;
+    from = f;
+    to = t;
+    weight = w;
   }
 
   std::string as_dot() {
     std::string dot = "  ";
-    dot += t1_prefix + std::to_string(from) + " -- " + t2_prefix + std::to_string(to);
+    dot += t1_prefix + std::to_string(from) + " -- " + t2_prefix +
+           std::to_string(to);
     dot += "[label = \"" + std::to_string(weight) + "\"];\n";
     return dot;
   }
@@ -97,23 +100,28 @@ struct Bipartate {
   std::unordered_map<int, Node> t1;
   std::unordered_map<int, Node> t2;
   std::vector<Edge> edges;
-  std::unordered_map<std::pair<int, int>, int,
-    boost::hash<std::pair<int, int>>> positions;
+  std::unordered_map<std::pair<int, int>, int, boost::hash<std::pair<int, int>>>
+      positions;
   Bipartate(std::string csv_name);
-  Bipartate() {};
+  Bipartate(){};
   void write_dot(std::string file_name);
   Bipartate mutate(uint8_t chance);
   void calc_score();
+  bool is_adjacent(int x, int y);
 
   // Overloading "<" operator based on score
-  bool operator < (const Bipartate &rhs) const {
-    return score < rhs.score;
+  bool operator<(const Bipartate &rhs) const { return score < rhs.score; }
+  auto &operator()(bool c) {
+    if (c) {
+      return t1;
+    }
+    return t2;
   }
 };
 
 Bipartate::Bipartate(std::string csv_name) {
 
- // https://stackoverflow.com/questions/48994605/csv-data-into-a-2d-array-of-integers
+  // https://stackoverflow.com/questions/48994605/csv-data-into-a-2d-array-of-integers
   std::ifstream f;
   f.open(csv_name);
 
@@ -125,7 +133,7 @@ Bipartate::Bipartate(std::string csv_name) {
   std::vector<std::vector<int>> array;
 
   // Read one row at a time
-  while (std::getline (f, row)) {
+  while (std::getline(f, row)) {
     std::stringstream s(row);
 
     // Initialise t1 at n_row
@@ -135,7 +143,7 @@ Bipartate::Bipartate(std::string csv_name) {
     unsigned int n_col = 0;
 
     // Read one , delimitted value at a time
-    while (getline (s, val, ',')) {
+    while (getline(s, val, ',')) {
       int weight = std::stoi(val);
 
       // Initialise t2 at n_col
@@ -162,7 +170,7 @@ Bipartate::Bipartate(std::string csv_name) {
   // "Random" order based on unordered_map
   int x = 0;
   int y = 0;
-  for (auto& it: t1) {
+  for (auto &it : t1) {
     positions[{x, y}] = it.first;
     it.second.pos = Pos(x, y);
     y++;
@@ -173,7 +181,7 @@ Bipartate::Bipartate(std::string csv_name) {
   y = 0;
 
   // "Random" order based on unordered_map
-  for (auto& it: t2) {
+  for (auto &it : t2) {
     positions[{x, y}] = it.first;
     it.second.pos = Pos(x, y);
     it.second.is_t1 = false;
@@ -182,68 +190,87 @@ Bipartate::Bipartate(std::string csv_name) {
   write_dot("input.dot");
 }
 
+bool Bipartate::is_adjacent(int x, int y) {
+
+  return positions.contains({x, y + 1}) || positions.contains({x, y - 1}) ||
+         positions.contains({x + 1, y}) || positions.contains({x - 1, y});
+}
+
 Bipartate Bipartate::mutate(uint8_t chance) {
 
   // Make a copy as the result we will return
   Bipartate bm(*this);
 
-  for (auto& it: bm.t1) {
+  for (bool c : {true, false}) {
+    for (auto &it : bm(c)) {
 
-    // Should this node mutate?
-    if (Random::get<uint8_t>(1, 100) > chance) {
+      // Should this node mutate?
+      if (Random::get<uint8_t>(1, 100) < chance) {
 
-      // Should it swap with a neighbour?
-      if (Random::get<bool>()) {
+        uint8_t mutation = Random::get<uint8_t>(1, 3);
 
-        int x = it.second.pos.x; int y = it.second.pos.y;
+        int x = it.second.pos.x;
+        int y = it.second.pos.y;
 
-        // Swap with neighbour above
-        if (bm.positions.contains({x, y + 1})) {
-          it.second.pos.y = y + 1;
-          bm.t1[bm.positions[{x, y + 1}]].pos.y = y;
-          bm.positions[{x, y}] = bm.t1[bm.positions[{x, y + 1}]].id;
-          bm.positions[{x, y + 1}] = it.second.id;
-        }
+        switch (mutation) {
 
-        // Swap with neighbour below
-        else if (bm.positions.contains({x, y - 1})) {
-          it.second.pos.y = y - 1;
-          bm.t1[bm.positions[{x, y - 1}]].pos.y = y;
-          bm.positions[{x, y}] = bm.t1[bm.positions[{x, y - 1}]].id;
-          bm.positions[{x, y - 1}] = it.second.id;
+          // Move vertically
+        case 1:
+
+          // Swap with neighbour above/below
+          if (is_adjacent(x, y)) {
+            int new_y = Random::get<bool>() ? y + 1 : y - 1;
+
+            it.second.pos.y = new_y;
+            if (bm.positions.contains({x, new_y})) {
+              bm(c)[bm.positions[{x, new_y}]].pos.y = y;
+              bm.positions[{x, y}] = bm(c)[bm.positions[{x, new_y}]].id;
+            }
+            bm.positions[{x, new_y}] = it.second.id;
+          }
+          break;
+
+          // Move horizontally
+        case 2:
+
+          // Swap with to right
+          if (Random::get<bool>() && is_adjacent(x + 2, y)) {
+            it.second.pos.x = x + 2;
+            if (bm.positions.contains({x + 2, y})) {
+              bm(c)[bm.positions[{x + 2, y}]].pos.x = x;
+              bm.positions[{x, y}] = bm(c)[bm.positions[{x + 2, y}]].id;
+            }
+            bm.positions[{x + 2, y}] = it.second.id;
+          }
+          // Swap with neighbour to left
+          else if (is_adjacent(x - 2, y)) {
+            it.second.pos.x = x - 2;
+            if (bm.positions.contains({x - 2, y})) {
+              bm(c)[bm.positions[{x - 2, y}]].pos.x = x;
+              bm.positions[{x, y}] = bm(c)[bm.positions[{x - 2, y}]].id;
+            }
+            bm.positions[{x - 2, y}] = it.second.id;
+          }
+          break;
+
+          // Move to front
+        case 3:
+          if (it.second.connections.size() > 0) {
+            int move_to = *(Random::get(it.second.connections));
+            int new_y = bm(!c)[move_to].pos.y;
+            it.second.pos.y = new_y;
+            if (bm.positions.contains({x, new_y})) {
+              bm(c)[bm.positions[{x, new_y}]].pos.y = y;
+              bm.positions[{x, y}] = bm(c)[bm.positions[{x, new_y}]].id;
+            }
+            bm.positions[{x, new_y}] = it.second.id;
+          }
+          break;
+          // case 4:
+          //   std::cout << "Swap Randomly\n";
+          //   break;
         }
       }
-      // Else move to new empty cell
-    }
-  }
-
-  for (auto& it: bm.t2) {
-
-    // Should this node mutate?
-    if (Random::get<uint8_t>(1, 100) > chance) {
-
-      // Should it swap with a neighbour?
-      if (Random::get<bool>()) {
-
-        int x = it.second.pos.x; int y = it.second.pos.y;
-
-        // Swap with neighbour above
-        if (bm.positions.contains({x, y + 1})) {
-          it.second.pos.y = y + 1;
-          bm.t2[bm.positions[{x, y + 1}]].pos.y = y;
-          bm.positions[{x, y}] = bm.t2[bm.positions[{x, y + 1}]].id;
-          bm.positions[{x, y + 1}] = it.second.id;
-        }
-
-        // Swap with neighbour below
-        else if (bm.positions.contains({x, y - 1})) {
-          it.second.pos.y = y - 1;
-          bm.t2[bm.positions[{x, y - 1}]].pos.y = y;
-          bm.positions[{x, y}] = bm.t2[bm.positions[{x, y - 1}]].id;
-          bm.positions[{x, y - 1}] = it.second.id;
-        }
-      }
-      // Else move to new empty cell
     }
   }
   bm.calc_score();
@@ -253,15 +280,16 @@ Bipartate Bipartate::mutate(uint8_t chance) {
 void Bipartate::write_dot(std::string file_name) {
   std::ofstream f;
   f.open(file_name);
+  std::cout << "Writing " << file_name << std::endl;
   f << "graph autograph {\n";
 
   // Nodes
   f << std::endl;
   f << "  // Nodes\n";
-  for (auto& it: t1) {
+  for (auto &it : t1) {
     f << it.second.as_dot();
   }
-  for (auto& it: t2) {
+  for (auto &it : t2) {
     f << it.second.as_dot();
   }
 
@@ -288,7 +316,6 @@ void Bipartate::calc_score() {
       score += s1.intersects(s2);
     }
   }
-
 }
 
 struct Generation {
@@ -318,8 +345,7 @@ struct Generation {
   void evolve(unsigned int n_specimen, uint8_t chance);
   void write_dot(bool all);
   void advance(unsigned int n_specimen, uint8_t chance);
-  void advance_n_gens(unsigned int n_gens,
-                      unsigned int n_specimen,
+  void advance_n_gens(unsigned int n_gens, unsigned int n_specimen,
                       uint8_t chance);
 };
 
@@ -359,39 +385,37 @@ Generation::Generation(int argc, char **argv) {
   argparse::ArgumentParser arguments("autograph", "1.0");
 
   // Positional argument accepting CSV file
-  arguments.add_argument("CSV")
-    .default_value("none")
-    .help("File path: CSV file");
+  arguments.add_argument("CSV").default_value("none").help(
+      "File path: CSV file");
 
   // Optional argument
   arguments.add_argument("-s", "--n_specimen")
-    .default_value(static_cast<unsigned int>(1000))
-    .scan<'u', unsigned int>()
-    .help("Integer: Number of specimen per generation");
+      .default_value(static_cast<unsigned int>(1000))
+      .scan<'u', unsigned int>()
+      .help("Integer: Number of specimen per generation");
 
   // Optional argument
   arguments.add_argument("-g", "--n_generations")
-    .default_value(static_cast<unsigned int>(1000))
-    .scan<'u', unsigned int>()
-    .help("Integer: Number of generations");
+      .default_value(static_cast<unsigned int>(1000))
+      .scan<'u', unsigned int>()
+      .help("Integer: Number of generations");
 
   // Optional argument
   arguments.add_argument("-p", "--probability")
-    .default_value(static_cast<unsigned int>(50))
-    .scan<'u', unsigned int>()
-    .help("Integer between 0 and 100: Proportion of mutations");
+      .default_value(static_cast<unsigned int>(50))
+      .scan<'u', unsigned int>()
+      .help("Integer between 0 and 100: Proportion of mutations");
 
   // Optional argument
   arguments.add_argument("-o", "--output")
-    .default_value(static_cast<unsigned int>(100))
-    .scan<'u', unsigned int>()
-    .help("Integer: Output best every n generations");
+      .default_value(static_cast<unsigned int>(100))
+      .scan<'u', unsigned int>()
+      .help("Integer: Output best every n generations");
 
   // Parse command line arguments
   try {
     arguments.parse_args(argc, argv);
-  }
-  catch (const std::runtime_error& err) {
+  } catch (const std::runtime_error &err) {
     std::cerr << "ERROR: " << err.what() << std::endl;
     std::cerr << arguments;
     std::exit(1);
@@ -447,22 +471,23 @@ void Generation::evolve(unsigned int n_specimen, uint8_t chance) {
   }
 
   // Replace specimen with copy
-  specimen.clear(); specimen = specimen_copy; specimen_copy.clear();
+  specimen.clear();
+  specimen = specimen_copy;
+  specimen_copy.clear();
 
   unsigned int i = 0;
   n_size = specimen.size();
   while (n_size < n_specimen) {
     specimen.push_back(specimen[i].mutate(chance));
-    i++; n_size++;
+    i++;
+    n_size++;
   }
   std::sort(specimen.begin(), specimen.end());
   n_generation++;
 }
 
 void Generation::write_dot(bool all) {
-  specimen[0].write_dot("best_gen_" +
-                            std::to_string(n_generation) +
-                            ".dot");
+  specimen[0].write_dot("best_gen_" + std::to_string(n_generation) + ".dot");
 
   if (all) {
     for (unsigned int i = 1; i < specimen.size(); ++i) {

@@ -222,7 +222,7 @@ size_max_y=0
 
 for fichier in ${inputs[@]}; do
 	echo "Processing $fichier"
-	dot "$fichier" | gvpr -c -f/tmp/script.dot | neato -n -Tpng -o "${fichier}.png"
+	dot "$fichier" | gvpr -c -f/tmp/script.dot | neato -Tpng -o "${fichier}.png"
 	size_temp=`identify "${fichier}.png" | cut -d " " -f 3`
 	size_temp_x=`echo $size_temp | cut -d 'x' -f1`
 	size_temp_y=`echo $size_temp | cut -d 'x' -f2`
